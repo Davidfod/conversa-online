@@ -151,7 +151,6 @@
         
         .message .user-name { font-size: 0.95rem; color: var(--text-white); font-weight: 500; }
         
-        /* Tag de Cargo Estilo Discord */
         .role-tag {
             font-size: 0.65rem;
             font-weight: bold;
@@ -185,7 +184,7 @@
 
         .message:hover .btn-reply-msg { display: block; }
 
-        /* INPUT DE TEXTO E CAIXA DE REPLICAÇÃO */
+        /* INPUT DE TEXTO */
         .chat-input-container { padding: 0 16px 24px 16px; background: var(--bg-chat); flex-shrink: 0; }
 
         .reply-preview-box {
@@ -202,7 +201,7 @@
         .chat-input-form { display: flex; flex-direction: column; background: var(--bg-input); border-radius: 8px; }
         .chat-input { flex: 1; background: transparent; border: none; padding: 12px 16px; color: var(--text-white); outline: none; font-size: 0.95rem; }
 
-        /* BARRA LATERAL DIREITA (PERFIL E CARGOS) */
+        /* BARRA LATERAL DIREITA (PERFIL, CARGOS E ONLINE) */
         .sidebar-right { 
             width: 280px; 
             background: var(--bg-profile); 
@@ -219,13 +218,38 @@
         .profile-card img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; border: 2px solid var(--accent); }
         .profile-card h3 { font-size: 1.1rem; color: var(--text-white); font-weight: 600; margin-bottom: 6px;}
 
-        .edit-profile-box, .roles-box { display: flex; flex-direction: column; gap: 12px; background: var(--bg-card); padding: 14px; border-radius: 8px;}
+        .edit-profile-box, .roles-box, .online-box { display: flex; flex-direction: column; gap: 12px; background: var(--bg-card); padding: 14px; border-radius: 8px;}
         .sidebar-right h2 { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
         label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px; }
         input, select { width: 100%; background: var(--bg-chat); border: 1px solid rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; color: var(--text-white); outline: none; font-size: 0.85rem;}
         
         .btn-save { background: #5865F2; color: var(--text-white); border: none; padding: 8px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 0.85rem;}
         .btn-admin { background: #248046; margin-top: 4px; }
+
+        /* LISTA DE USUÁRIOS ONLINE */
+        .online-user-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+        .online-user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .online-user-item img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .online-user-item span {
+            font-size: 0.85rem;
+            color: var(--text-white);
+        }
 
         @media (max-width: 768px) {
             body { flex-direction: column; height: auto; }
@@ -290,7 +314,7 @@
         </div>
 
         <div class="roles-box">
-            <h2>Criar & Dar Cargos</h2>
+            <h2>Criar Cargos</h2>
             <div>
                 <label>Chave Secreta</label>
                 <input type="password" id="roleKey" placeholder="Chave para permissão">
@@ -305,13 +329,16 @@
                 <input type="color" id="newRoleColor" value="#ff0044">
             </div>
             <button class="btn-save btn-admin" onclick="createNewRole()">Criar Cargo</button>
-            
-            <hr style="border: 0; border-top: 1px solid var(--border-color);">
-            <div>
-                <label>Selecionar Cargo Existente</label>
-                <select id="roleSelector"><option value="">Nenhum</option></select>
+        </div>
+
+        <div class="online-box">
+            <h2>Membros Conectados</h2>
+            <div style="margin-bottom:6px;">
+                <label>Selecione o Cargo para aplicar:</label>
+                <select id="roleSelectorGlobal"><option value="">Nenhum Cargo (Remover)</option></select>
             </div>
-            <button class="btn-save" style="background:#4f545c;" onclick="applyRoleToMe()">Equipar em Mim</button>
+            <div id="onlineUsersContainer" style="display:flex; flex-direction:column; gap:6px;">
+                </div>
         </div>
     </div>
 
@@ -332,18 +359,20 @@
         let currentChannel = 'chat-geral';
         let messagesRef = database.ref('messages/' + currentChannel);
         const rolesRef = database.ref('server_roles');
+        const presenceRef = database.ref('presence');
 
         const DEFAULT_AVATAR = 'https://i.gifer.com/ZZ5H.gif';
-        const ACCESS_KEY = "cyberlindo"; // Chave definida por você
+        const ACCESS_KEY = "cyberlindo";
         
-        let currentUser = { name: '', avatar: '', currentRole: null };
+        let myId = 'user_' + Math.floor(Math.random() * 100000);
+        let currentUser = { id: myId, name: '', avatar: '', currentRole: null };
         let selectedReplyUser = null;
         let availableRoles = {};
 
         function initUser() {
             const savedName = localStorage.getItem('cyber_name');
             const savedAvatar = localStorage.getItem('cyber_avatar');
-            const savedRole = localStorage.getItem('cyber_role'); // Pega o objeto do cargo salvo localmente
+            const savedRole = localStorage.getItem('cyber_role');
             
             currentUser.name = savedName || "CyberUser_" + Math.floor(Math.random() * 900 + 100);
             currentUser.avatar = savedAvatar || DEFAULT_AVATAR;
@@ -355,20 +384,75 @@
             document.getElementById('inputAvatar').value = savedAvatar || '';
             
             renderProfileRole();
+            updatePresence();
         }
 
-        // Monitora os cargos criados no Firebase
+        // Atualiza a presença do usuário atual no servidor
+        function updatePresence() {
+            presenceRef.child(currentUser.id).set({
+                id: currentUser.id,
+                name: currentUser.name,
+                avatar: currentUser.avatar,
+                currentRole: currentUser.currentRole || null
+            });
+        }
+
+        // Escuta os cargos criados
         rolesRef.on('value', (snapshot) => {
             const data = snapshot.val() || {};
             availableRoles = data;
-            const selector = document.getElementById('roleSelector');
-            selector.innerHTML = '<option value="">Nenhum Cargo</option>';
+            const selector = document.getElementById('roleSelectorGlobal');
+            selector.innerHTML = '<option value="">Nenhum Cargo (Remover)</option>';
             
             Object.keys(data).forEach(roleId => {
                 const option = document.createElement('option');
                 option.value = roleId;
                 option.textContent = data[roleId].name;
                 selector.appendChild(option);
+            });
+        });
+
+        // Escuta todos os usuários online na sala
+        presenceRef.on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            const container = document.getElementById('onlineUsersContainer');
+            container.innerHTML = '';
+
+            Object.keys(data).forEach(userId => {
+                const user = data[userId];
+                
+                // Se o usuário online atual for eu mesmo, atualiza localmente se outra pessoa mudar meu cargo
+                if(userId === currentUser.id && JSON.stringify(user.currentRole) !== JSON.stringify(currentUser.currentRole)) {
+                    currentUser.currentRole = user.currentRole || null;
+                    if(currentUser.currentRole) localStorage.setItem('cyber_role', JSON.stringify(currentUser.currentRole));
+                    else localStorage.removeItem('cyber_role');
+                    renderProfileRole();
+                }
+
+                const item = document.createElement('div');
+                item.classList.add('online-user-item');
+
+                const infoBox = document.createElement('div');
+                infoBox.classList.add('online-user-info');
+                infoBox.innerHTML = `<img src="${user.avatar || DEFAULT_AVATAR}"> <span>${user.name}</span>`;
+                
+                if (user.currentRole) {
+                    const rTag = document.createElement('span');
+                    rTag.style.fontSize = '0.6rem';
+                    rTag.style.color = user.currentRole.color;
+                    rTag.style.marginLeft = '4px';
+                    rTag.textContent = `[${user.currentRole.name}]`;
+                    infoBox.appendChild(rTag);
+                }
+
+                const btn = document.createElement('button');
+                btn.textContent = 'Dar Cargo';
+                btn.style.cssText = 'background:#5865F2; color:#fff; border:none; padding:3px 6px; border-radius:3px; cursor:pointer; font-size:0.75rem;';
+                btn.onclick = () => assignRoleToUser(user.id, user.name);
+
+                item.appendChild(infoBox);
+                item.appendChild(btn);
+                container.appendChild(item);
             });
         });
 
@@ -396,25 +480,25 @@
             });
         }
 
-        function applyRoleToMe() {
+        // NOVA FUNÇÃO: Aplica um cargo para qualquer pessoa usando a chave cyberlindo
+        function assignRoleToUser(targetUserId, targetUserName) {
             const keyInput = document.getElementById('roleKey').value.trim();
-            const selectedRoleId = document.getElementById('roleSelector').value;
+            const selectedRoleId = document.getElementById('roleSelectorGlobal').value;
 
             if (keyInput !== ACCESS_KEY) {
-                alert("Chave Secreta incorreta! Sem a chave você não consegue equipar ou remover cargos.");
+                alert("Chave Secreta incorreta! Sem a chave você não consegue alterar cargos de outras pessoas.");
                 return;
             }
 
-            if (!selectedRoleId) {
-                currentUser.currentRole = null;
-                localStorage.removeItem('cyber_role');
-                alert("Cargo removido do seu perfil!");
-            } else {
-                currentUser.currentRole = availableRoles[selectedRoleId];
-                localStorage.setItem('cyber_role', JSON.stringify(currentUser.currentRole));
-                alert(`Você equipou o cargo: ${currentUser.currentRole.name}!`);
-            }
-            renderProfileRole();
+            const targetRole = selectedRoleId ? availableRoles[selectedRoleId] : null;
+            
+            presenceRef.child(targetUserId).child('currentRole').set(targetRole).then(() => {
+                if (targetRole) {
+                    alert(`Cargo "${targetRole.name}" aplicado em @${targetUserName}!`);
+                } else {
+                    alert(`Cargos removidos de @${targetUserName}!`);
+                }
+            });
         }
 
         function renderProfileRole() {
@@ -423,7 +507,7 @@
             if (currentUser.currentRole) {
                 const tag = document.createElement('span');
                 tag.classList.add('role-tag');
-                tag.style.backgroundColor = currentUser.currentRole.color + "33"; // 20% de opacidade de fundo
+                tag.style.backgroundColor = currentUser.currentRole.color + "33";
                 tag.style.color = currentUser.currentRole.color;
                 tag.style.border = `1px solid ${currentUser.currentRole.color}`;
                 tag.textContent = currentUser.currentRole.name;
@@ -471,7 +555,6 @@
                 nameDiv.textContent = data.name;
                 nameWrapper.appendChild(nameDiv);
 
-                // Se a mensagem contiver dados de cargo, exibe a Tag ao lado do nome
                 if (data.userRole) {
                     const roleSpan = document.createElement('span');
                     roleSpan.classList.add('role-tag');
@@ -523,9 +606,8 @@
             localStorage.setItem('cyber_avatar', currentUser.avatar);
             
             document.getElementById('currentName').innerText = currentUser.name;
-            const avatarElement = document.getElementById('currentAvatar');
-            avatarElement.src = '';
-            avatarElement.src = currentUser.avatar;
+            document.getElementById('currentAvatar').src = currentUser.avatar;
+            updatePresence();
         }
 
         function sendMessage(event) {
@@ -538,14 +620,18 @@
                     avatar: currentUser.avatar,
                     text: text,
                     replyTo: selectedReplyUser,
-                    userRole: currentUser.currentRole || null // Envia o cargo atual junto na mensagem
+                    userRole: currentUser.currentRole || null
                 });
                 input.value = '';
                 cancelReply();
             }
         }
 
-        // Inicialização
+        // Quando o usuário fechar a aba ou sair do site, remove da lista de online
+        window.onbeforeunload = function() {
+            presenceRef.child(currentUser.id).remove();
+        };
+
         initUser();
         listenMessages();
     </script>
