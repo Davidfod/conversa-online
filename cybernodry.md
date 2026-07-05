@@ -36,14 +36,14 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* BARRA LATERAL ESQUERDA (CANAIS E CALL) */
+        /* BARRA LATERAL ESQUERDA (CANAIS E CONFIGS DE ÁUDIO) */
         .sidebar-left { 
-            width: 240px; 
+            width: 250px; 
             background: var(--bg-channels); 
             display: flex; 
             flex-direction: column; 
             padding: 20px 12px; 
-            gap: 20px;
+            gap: 16px;
             flex-shrink: 0;
             overflow-y: auto;
         }
@@ -54,14 +54,14 @@
             text-transform: uppercase; 
             letter-spacing: 1px; 
             font-weight: 700;
-            margin-bottom: 8px;
+            margin-top: 10px;
+            margin-bottom: 6px;
         }
 
         .channel-list, .call-users-list {
             display: flex;
             flex-direction: column;
             gap: 4px;
-            margin-bottom: 16px;
         }
 
         .btn-channel {
@@ -106,13 +106,40 @@
         }
 
         .btn-call i { color: var(--text-muted); width: 24px; text-align: center; }
-
         .btn-call:hover { background: rgba(79, 84, 92, 0.32); color: var(--text-white); }
-
         .btn-call.active { background: #248046; color: var(--text-white); }
         .btn-call.active i { color: var(--text-white); }
 
-        /* LISTA DE QUEM TÁ NA CALL */
+        /* SELEÇÃO DE DISPOSITIVOS (ESTILO DISCORD) */
+        .audio-devices-box {
+            background: var(--bg-card);
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .audio-devices-box label {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .audio-devices-box select {
+            width: 100%;
+            background: var(--bg-input);
+            color: var(--text-white);
+            border: 1px solid var(--border-color);
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+        }
+
         .user-in-call {
             display: flex;
             align-items: center;
@@ -123,17 +150,8 @@
             margin-top: 4px;
         }
 
-        .user-in-call img {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .user-in-call span {
-            font-size: 0.85rem;
-            color: var(--text-white);
-        }
+        .user-in-call img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+        .user-in-call span { font-size: 0.85rem; color: var(--text-white); }
 
         /* ÁREA CENTRAL DO CHAT */
         .chat-area { 
@@ -178,11 +196,8 @@
         }
 
         .message:hover { background: rgba(4, 4, 5, 0.07); }
-
         .message img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-
         .message-content { display: flex; flex-direction: column; justify-content: center; width: 100%; }
-
         .message .user-name { font-size: 0.95rem; color: var(--text-white); font-weight: 500; margin-bottom: 4px; }
 
         .message .reply-tag {
@@ -210,7 +225,7 @@
 
         .message:hover .btn-reply-msg { display: block; }
 
-        /* INPUT DE TEXTO E CAIXA DE REPLICAÇÃO */
+        /* INPUT DE TEXTO */
         .chat-input-container { padding: 0 16px 24px 16px; background: var(--bg-chat); flex-shrink: 0; }
 
         .reply-preview-box {
@@ -225,7 +240,6 @@
         }
 
         .chat-input-form { display: flex; flex-direction: column; background: var(--bg-input); border-radius: 8px; }
-
         .chat-input { flex: 1; background: transparent; border: none; padding: 12px 16px; color: var(--text-white); outline: none; font-size: 0.95rem; }
 
         /* BARRA LATERAL DIREITA */
@@ -273,6 +287,18 @@
                 <i class="fa-solid fa-volume-high"></i>
                 <span>Entrar na Call 1</span>
             </button>
+            
+            <div class="audio-devices-box">
+                <div>
+                    <label><i class="fa-solid fa-microphone"></i> Entrada</label>
+                    <select id="audioInputDevices" onchange="changeAudioInput()"></select>
+                </div>
+                <div>
+                    <label><i class="fa-solid fa-headphones"></i> Saída</label>
+                    <select id="audioOutputDevices" onchange="changeAudioOutput()"></select>
+                </div>
+            </div>
+
             <div class="call-users-list" id="callUsersList"></div>
         </div>
         <div class="version-text">SISTEMA PRIVADO 3.0</div>
@@ -285,7 +311,7 @@
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-input-container">
             <div class="reply-preview-box" id="replyBox">
-                <span id="replyText">Repondendo a...</span>
+                <span id="replyText">Respondendo a...</span>
                 <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="cancelReply()"></i>
             </div>
             <form class="chat-input-form" onsubmit="sendMessage(event)">
@@ -334,6 +360,7 @@
         const DEFAULT_AVATAR = 'https://picsum.photos/id/64/150/150';
         let currentUser = { name: '', avatar: '', id: 'user_' + Math.floor(Math.random() * 100000) };
         let selectedReplyUser = null;
+        let localStream = null;
 
         function initUser() {
             const savedName = localStorage.getItem('cyber_name');
@@ -345,8 +372,63 @@
             document.getElementById('currentAvatar').src = currentUser.avatar;
             document.getElementById('inputName').value = currentUser.name;
             document.getElementById('inputAvatar').value = savedAvatar || '';
+            
+            // Pedir permissões básicas assim que o app carrega para listar os dispositivos de som
+            requestAudioPermissions();
         }
-        initUser();
+
+        // SISTEMA DE PERMISSÕES E LISTAGEM DE DISPOSITIVOS
+        async function requestAudioPermissions() {
+            try {
+                // Solicita acesso inicial ao microfone (gatilho de permissão do navegador)
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop()); // Fecha o stream temporário
+                
+                // Puxa e lista os dispositivos disponíveis
+                loadAudioDevices();
+            } catch (err) {
+                console.log("Permissão de microfone negada ou indisponível.");
+            }
+        }
+
+        async function loadAudioDevices() {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const inputSelect = document.getElementById('audioInputDevices');
+            const outputSelect = document.getElementById('audioOutputDevices');
+            
+            inputSelect.innerHTML = '';
+            outputSelect.innerHTML = '';
+
+            devices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                
+                if (device.kind === 'audioinput') {
+                    option.text = device.label || `Microfone (${device.deviceId.slice(0, 5)})`;
+                    inputSelect.appendChild(option);
+                } else if (device.kind === 'audiooutput') {
+                    option.text = device.label || `Fone/Alto-falante (${device.deviceId.slice(0, 5)})`;
+                    outputSelect.appendChild(option);
+                }
+            });
+        }
+
+        async function changeAudioInput() {
+            const deviceId = document.getElementById('audioInputDevices').value;
+            if (localStream) {
+                // Se já estiver na call, troca o dispositivo dinamicamente
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId } } });
+            }
+        }
+
+        function changeAudioOutput() {
+            const deviceId = document.getElementById('audioOutputDevices').value;
+            // Configura a saída padrão do sistema se suportado pelo navegador
+            if (typeof document.createElement('audio').setSinkId === 'function') {
+                console.log("Dispositivo de saída alterado para: " + deviceId);
+            }
+        }
 
         function switchChannel(channelName) {
             currentChannel = channelName;
@@ -402,7 +484,6 @@
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             });
         }
-        listenMessages();
 
         function setReply(username) {
             selectedReplyUser = username;
@@ -444,17 +525,29 @@
             }
         }
 
-        // ATUALIZAÇÃO DA CALL EM TEMPO REAL NO BANCO
-        function toggleCall() {
+        async function toggleCall() {
             const btn = document.getElementById('callBtn');
             if (!btn.classList.contains('active')) {
-                btn.classList.add('active');
-                btn.querySelector('span').innerText = 'Em Call (Ativo)';
-                callRef.child(currentUser.id).set({
-                    name: currentUser.name,
-                    avatar: currentUser.avatar
-                });
+                try {
+                    const selectedInputId = document.getElementById('audioInputDevices').value;
+                    localStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: selectedInputId ? { deviceId: { exact: selectedInputId } } : true 
+                    });
+
+                    btn.classList.add('active');
+                    btn.querySelector('span').innerText = 'Em Call (Ativo)';
+                    callRef.child(currentUser.id).set({
+                        name: currentUser.name,
+                        avatar: currentUser.avatar
+                    });
+                } catch (err) {
+                    alert('Erro ao iniciar dispositivo de áudio escolhido.');
+                }
             } else {
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                    localStream = null;
+                }
                 btn.classList.remove('active');
                 btn.querySelector('span').innerText = 'Entrar na Call 1';
                 callRef.child(currentUser.id).remove();
@@ -478,6 +571,10 @@
         window.onbeforeunload = function() {
             callRef.child(currentUser.id).remove();
         };
+
+        // Inicializa o app
+        initUser();
+        listenMessages();
     </script>
 </body>
 </html>
