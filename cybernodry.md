@@ -141,7 +141,24 @@
         .message:hover { background: rgba(4, 4, 5, 0.07); }
         .message img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
         .message-content { display: flex; flex-direction: column; justify-content: center; width: 100%; }
-        .message .user-name { font-size: 0.95rem; color: var(--text-white); font-weight: 500; margin-bottom: 4px; }
+        
+        .name-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        
+        .message .user-name { font-size: 0.95rem; color: var(--text-white); font-weight: 500; }
+        
+        /* Tag de Cargo Estilo Discord */
+        .role-tag {
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
 
         .message .reply-tag {
             font-size: 0.75rem;
@@ -185,7 +202,7 @@
         .chat-input-form { display: flex; flex-direction: column; background: var(--bg-input); border-radius: 8px; }
         .chat-input { flex: 1; background: transparent; border: none; padding: 12px 16px; color: var(--text-white); outline: none; font-size: 0.95rem; }
 
-        /* BARRA LATERAL DIREITA (PERFIL) */
+        /* BARRA LATERAL DIREITA (PERFIL E CARGOS) */
         .sidebar-right { 
             width: 280px; 
             background: var(--bg-profile); 
@@ -193,19 +210,22 @@
             padding: 20px 16px; 
             display: flex; 
             flex-direction: column; 
-            gap: 20px; 
+            gap: 16px; 
             overflow-y: auto; 
             flex-shrink: 0;
         }
 
-        .profile-card { background: var(--bg-card); padding: 20px 16px; border-radius: 8px; text-align: center; }
-        .profile-card img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 12px; border: 2px solid var(--accent); }
-        .profile-card h3 { font-size: 1.1rem; color: var(--text-white); font-weight: 600; }
+        .profile-card { background: var(--bg-card); padding: 16px; border-radius: 8px; text-align: center; }
+        .profile-card img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; border: 2px solid var(--accent); }
+        .profile-card h3 { font-size: 1.1rem; color: var(--text-white); font-weight: 600; margin-bottom: 6px;}
 
-        .edit-profile-box { display: flex; flex-direction: column; gap: 16px; }
-        .edit-profile-box label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px; }
-        .edit-profile-box input { width: 100%; background: var(--bg-card); border: 1px solid rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; color: var(--text-main); outline: none; }
-        .btn-save { background: #5865F2; color: var(--text-white); border: none; padding: 10px; border-radius: 4px; font-weight: 600; cursor: pointer; }
+        .edit-profile-box, .roles-box { display: flex; flex-direction: column; gap: 12px; background: var(--bg-card); padding: 14px; border-radius: 8px;}
+        .sidebar-right h2 { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px; }
+        input, select { width: 100%; background: var(--bg-chat); border: 1px solid rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; color: var(--text-white); outline: none; font-size: 0.85rem;}
+        
+        .btn-save { background: #5865F2; color: var(--text-white); border: none; padding: 8px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 0.85rem;}
+        .btn-admin { background: #248046; margin-top: 4px; }
 
         @media (max-width: 768px) {
             body { flex-direction: column; height: auto; }
@@ -213,11 +233,9 @@
             .chat-area { height: 60vh; }
         }
 
-        /* Customização de barras de rolagem */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-channels); }
         ::-webkit-scrollbar-thumb { background: #202225; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #111214; }
     </style>
 </head>
 <body>
@@ -255,8 +273,11 @@
         <div class="profile-card">
             <img id="currentAvatar" src="" alt="Sua Foto">
             <h3 id="currentName">Carregando...</h3>
+            <div id="profileRoleSlot"></div>
         </div>
+        
         <div class="edit-profile-box">
+            <h2>Perfil</h2>
             <div>
                 <label>Nome de Usuário</label>
                 <input type="text" id="inputName" maxlength="25">
@@ -266,6 +287,31 @@
                 <input type="text" id="inputAvatar" placeholder="Cole o link .gif aqui">
             </div>
             <button class="btn-save" onclick="updateProfile()">Salvar Alterações</button>
+        </div>
+
+        <div class="roles-box">
+            <h2>Criar & Dar Cargos</h2>
+            <div>
+                <label>Chave Secreta</label>
+                <input type="password" id="roleKey" placeholder="Chave para permissão">
+            </div>
+            <hr style="border: 0; border-top: 1px solid var(--border-color);">
+            <div>
+                <label>Nome do Novo Cargo</label>
+                <input type="text" id="newRoleName" placeholder="Ex: Moderador, Criador">
+            </div>
+            <div>
+                <label>Cor do Cargo</label>
+                <input type="color" id="newRoleColor" value="#ff0044">
+            </div>
+            <button class="btn-save btn-admin" onclick="createNewRole()">Criar Cargo</button>
+            
+            <hr style="border: 0; border-top: 1px solid var(--border-color);">
+            <div>
+                <label>Selecionar Cargo Existente</label>
+                <select id="roleSelector"><option value="">Nenhum</option></select>
+            </div>
+            <button class="btn-save" style="background:#4f545c;" onclick="applyRoleToMe()">Equipar em Mim</button>
         </div>
     </div>
 
@@ -285,23 +331,105 @@
         
         let currentChannel = 'chat-geral';
         let messagesRef = database.ref('messages/' + currentChannel);
+        const rolesRef = database.ref('server_roles');
 
-        const DEFAULT_AVATAR = 'https://i.gifer.com/ZZ5H.gif'; // Avatar padrão em GIF animado
-        let currentUser = { name: '', avatar: '' };
+        const DEFAULT_AVATAR = 'https://i.gifer.com/ZZ5H.gif';
+        const ACCESS_KEY = "cyberlindo"; // Chave definida por você
+        
+        let currentUser = { name: '', avatar: '', currentRole: null };
         let selectedReplyUser = null;
+        let availableRoles = {};
 
         function initUser() {
             const savedName = localStorage.getItem('cyber_name');
             const savedAvatar = localStorage.getItem('cyber_avatar');
+            const savedRole = localStorage.getItem('cyber_role'); // Pega o objeto do cargo salvo localmente
+            
             currentUser.name = savedName || "CyberUser_" + Math.floor(Math.random() * 900 + 100);
             currentUser.avatar = savedAvatar || DEFAULT_AVATAR;
+            if(savedRole) currentUser.currentRole = JSON.parse(savedRole);
             
             document.getElementById('currentName').innerText = currentUser.name;
             document.getElementById('currentAvatar').src = currentUser.avatar;
             document.getElementById('inputName').value = currentUser.name;
             document.getElementById('inputAvatar').value = savedAvatar || '';
+            
+            renderProfileRole();
         }
-        initUser();
+
+        // Monitora os cargos criados no Firebase
+        rolesRef.on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            availableRoles = data;
+            const selector = document.getElementById('roleSelector');
+            selector.innerHTML = '<option value="">Nenhum Cargo</option>';
+            
+            Object.keys(data).forEach(roleId => {
+                const option = document.createElement('option');
+                option.value = roleId;
+                option.textContent = data[roleId].name;
+                selector.appendChild(option);
+            });
+        });
+
+        function createNewRole() {
+            const keyInput = document.getElementById('roleKey').value.trim();
+            const roleName = document.getElementById('newRoleName').value.trim();
+            const roleColor = document.getElementById('newRoleColor').value;
+
+            if (keyInput !== ACCESS_KEY) {
+                alert("Chave Secreta incorreta! Você não tem permissão para criar cargos.");
+                return;
+            }
+            if (roleName === "") {
+                alert("Digite um nome válido para o cargo.");
+                return;
+            }
+
+            const newRoleRef = rolesRef.push();
+            newRoleRef.set({
+                name: roleName,
+                color: roleColor
+            }).then(() => {
+                alert(`Cargo "${roleName}" criado com sucesso!`);
+                document.getElementById('newRoleName').value = '';
+            });
+        }
+
+        function applyRoleToMe() {
+            const keyInput = document.getElementById('roleKey').value.trim();
+            const selectedRoleId = document.getElementById('roleSelector').value;
+
+            if (keyInput !== ACCESS_KEY) {
+                alert("Chave Secreta incorreta! Sem a chave você não consegue equipar ou remover cargos.");
+                return;
+            }
+
+            if (!selectedRoleId) {
+                currentUser.currentRole = null;
+                localStorage.removeItem('cyber_role');
+                alert("Cargo removido do seu perfil!");
+            } else {
+                currentUser.currentRole = availableRoles[selectedRoleId];
+                localStorage.setItem('cyber_role', JSON.stringify(currentUser.currentRole));
+                alert(`Você equipou o cargo: ${currentUser.currentRole.name}!`);
+            }
+            renderProfileRole();
+        }
+
+        function renderProfileRole() {
+            const slot = document.getElementById('profileRoleSlot');
+            slot.innerHTML = '';
+            if (currentUser.currentRole) {
+                const tag = document.createElement('span');
+                tag.classList.add('role-tag');
+                tag.style.backgroundColor = currentUser.currentRole.color + "33"; // 20% de opacidade de fundo
+                tag.style.color = currentUser.currentRole.color;
+                tag.style.border = `1px solid ${currentUser.currentRole.color}`;
+                tag.textContent = currentUser.currentRole.name;
+                slot.appendChild(tag);
+            }
+        }
 
         function switchChannel(channelName) {
             currentChannel = channelName;
@@ -323,7 +451,6 @@
                 messageDiv.classList.add('message');
 
                 const img = document.createElement('img');
-                // Força o carregamento correto do link de imagem ou GIF
                 img.src = data.avatar || DEFAULT_AVATAR;
 
                 const contentDiv = document.createElement('div');
@@ -336,9 +463,24 @@
                     contentDiv.appendChild(replyDiv);
                 }
 
+                const nameWrapper = document.createElement('div');
+                nameWrapper.classList.add('name-wrapper');
+
                 const nameDiv = document.createElement('div');
                 nameDiv.classList.add('user-name');
                 nameDiv.textContent = data.name;
+                nameWrapper.appendChild(nameDiv);
+
+                // Se a mensagem contiver dados de cargo, exibe a Tag ao lado do nome
+                if (data.userRole) {
+                    const roleSpan = document.createElement('span');
+                    roleSpan.classList.add('role-tag');
+                    roleSpan.style.backgroundColor = data.userRole.color + "22";
+                    roleSpan.style.color = data.userRole.color;
+                    roleSpan.style.border = `1px solid ${data.userRole.color}`;
+                    roleSpan.textContent = data.userRole.name;
+                    nameWrapper.appendChild(roleSpan);
+                }
 
                 const textDiv = document.createElement('div');
                 textDiv.classList.add('user-text');
@@ -349,7 +491,7 @@
                 replyBtn.textContent = 'Responder';
                 replyBtn.onclick = () => setReply(data.name);
 
-                contentDiv.appendChild(nameDiv);
+                contentDiv.appendChild(nameWrapper);
                 contentDiv.appendChild(textDiv);
                 messageDiv.appendChild(img);
                 messageDiv.appendChild(contentDiv);
@@ -358,7 +500,6 @@
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             });
         }
-        listenMessages();
 
         function setReply(username) {
             selectedReplyUser = username;
@@ -382,8 +523,6 @@
             localStorage.setItem('cyber_avatar', currentUser.avatar);
             
             document.getElementById('currentName').innerText = currentUser.name;
-            
-            // Recarrega o elemento src para garantir o play do GIF animado na hora
             const avatarElement = document.getElementById('currentAvatar');
             avatarElement.src = '';
             avatarElement.src = currentUser.avatar;
@@ -398,12 +537,17 @@
                     name: currentUser.name,
                     avatar: currentUser.avatar,
                     text: text,
-                    replyTo: selectedReplyUser
+                    replyTo: selectedReplyUser,
+                    userRole: currentUser.currentRole || null // Envia o cargo atual junto na mensagem
                 });
                 input.value = '';
                 cancelReply();
             }
         }
+
+        // Inicialização
+        initUser();
+        listenMessages();
     </script>
 </body>
 </html>
