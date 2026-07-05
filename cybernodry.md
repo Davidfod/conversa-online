@@ -263,7 +263,7 @@
             </div>
             <div>
                 <label>Link da Foto ou GIF (URL)</label>
-                <input type="text" id="inputAvatar" placeholder="Cole o link .gif aqui">
+                <input type="text" id="inputAvatar" placeholder="Cole o link da foto ou gif aqui">
             </div>
             <button class="btn-save" onclick="updateProfile()">Salvar Alterações</button>
         </div>
@@ -286,7 +286,7 @@
         let currentChannel = 'chat-geral';
         let messagesRef = database.ref('messages/' + currentChannel);
 
-        const DEFAULT_AVATAR = 'https://i.gifer.com/ZZ5H.gif'; // Avatar padrão em GIF animado
+        const DEFAULT_AVATAR = 'https://picsum.photos/id/64/150/150';
         let currentUser = { name: '', avatar: '' };
         let selectedReplyUser = null;
 
@@ -323,7 +323,6 @@
                 messageDiv.classList.add('message');
 
                 const img = document.createElement('img');
-                // Força o carregamento correto do link de imagem ou GIF
                 img.src = data.avatar || DEFAULT_AVATAR;
 
                 const contentDiv = document.createElement('div');
@@ -380,13 +379,8 @@
 
             localStorage.setItem('cyber_name', currentUser.name);
             localStorage.setItem('cyber_avatar', currentUser.avatar);
-            
             document.getElementById('currentName').innerText = currentUser.name;
-            
-            // Recarrega o elemento src para garantir o play do GIF animado na hora
-            const avatarElement = document.getElementById('currentAvatar');
-            avatarElement.src = '';
-            avatarElement.src = currentUser.avatar;
+            document.getElementById('currentAvatar').src = currentUser.avatar;
         }
 
         function sendMessage(event) {
